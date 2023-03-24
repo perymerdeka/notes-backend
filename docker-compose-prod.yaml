@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    container_name: "notes-db"
+    image: postgres:15
+    env_file:
+      - .env
+    ports:
+      - 5434:${DB_PORT}
+    volumes:
+    - data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PWD}
+      - POSTGRES_DB=${DB_NAME}
+    networks:
+      - notes-network
+  web:
+    container_name: "notes-web"
+    build: .
+    working_dir: /app/src
+    command:  gunicorn core.wsgi --bind ${APP_IP}:${APP_PORT}
+    volumes:
+      - .:/app
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - notes-network
+  nginx:
+    build: ./nginx
+    container_name: notes-nginx
+    env_file:
+      - .env
+    ports:
+      - ${NGINX_PORT}:${HTTP_PORT}
+    depends_on:
+      - web
+    networks:
+      - notes-network
+networks:
+    notes-network:
+        driver: bridge
+volumes:
+  data:
